@@ -19,7 +19,6 @@ st.set_page_config(
 # ─────────────────────────────────────────
 # EXACT COLUMN ORDER — must match training
 # ─────────────────────────────────────────
-# FIXED — includes ChestPainType_TA
 FEATURE_COLUMNS = [
     'Age', 'RestingBP', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak',
     'Sex_M',
@@ -62,69 +61,95 @@ if not model_loaded:
     st.stop()
 
 # ─────────────────────────────────────────
-# SIDEBAR — patient input
+# SIDEBAR — patient input (typed)
 # ─────────────────────────────────────────
 with st.sidebar:
     st.header("Patient Details")
     st.caption("Enter the patient's clinical information below.")
 
-    st.subheader("Clinical Measurements")
+    st.subheader("Numerical Values")
 
-    age = st.slider("Age", min_value=20, max_value=100, value=54, step=1)
+    age = st.number_input(
+        "Age (years)",
+        min_value=1, max_value=120,
+        value=54, step=1,
+        help="Patient age in years (1–120)"
+    )
 
-    sex = st.radio("Sex", options=["Male", "Female"], horizontal=True)
+    resting_bp = st.number_input(
+        "Resting Blood Pressure (mmHg)",
+        min_value=50, max_value=300,
+        value=130, step=1,
+        help="Resting blood pressure in mmHg (50–300)"
+    )
+
+    cholesterol = st.number_input(
+        "Cholesterol (mg/dL)",
+        min_value=0, max_value=700,
+        value=237, step=1,
+        help="Serum cholesterol in mg/dL. Enter 0 if unknown — will be replaced with dataset median (237)"
+    )
+    if cholesterol == 0:
+        st.warning("Cholesterol 0 detected — will use dataset median: 237 mg/dL")
+        cholesterol = 237
+
+    max_hr = st.number_input(
+        "Max Heart Rate Achieved",
+        min_value=40, max_value=250,
+        value=150, step=1,
+        help="Maximum heart rate achieved during exercise (40–250)"
+    )
+
+    oldpeak = st.number_input(
+        "Oldpeak (ST depression)",
+        min_value=0.0, max_value=10.0,
+        value=1.0, step=0.1,
+        format="%.1f",
+        help="ST depression induced by exercise relative to rest (0.0–10.0)"
+    )
+
+    st.subheader("Categorical Values")
+
+    sex = st.radio(
+        "Sex",
+        options=["Male", "Female"],
+        horizontal=True
+    )
+
+    fasting_bs = st.radio(
+        "Fasting Blood Sugar > 120 mg/dL?",
+        options=["No", "Yes"],
+        horizontal=True
+    )
+    fasting_bs_code = 1 if fasting_bs == "Yes" else 0
 
     chest_pain = st.selectbox(
         "Chest Pain Type",
-        options=["ATA — Atypical Angina",
-                 "NAP — Non-Anginal Pain",
-                 "ASY — Asymptomatic",
-                 "TA  — Typical Angina"],
+        options=[
+            "ATA — Atypical Angina",
+            "NAP — Non-Anginal Pain",
+            "ASY — Asymptomatic",
+            "TA  — Typical Angina"
+        ],
         index=2
     )
     chest_pain_code = chest_pain.split(" — ")[0].strip()
 
-    resting_bp = st.slider(
-        "Resting Blood Pressure (mmHg)",
-        min_value=80, max_value=200, value=130, step=1
-    )
-
-    cholesterol = st.slider(
-        "Cholesterol (mg/dL)",
-        min_value=100, max_value=600, value=237, step=1
-    )
-    if cholesterol == 0:
-        st.warning("Cholesterol 0 is not valid — using median (237)")
-        cholesterol = 237
-
-    fasting_bs = st.radio(
-        "Fasting Blood Sugar > 120 mg/dL?",
-        options=["No (0)", "Yes (1)"],
-        horizontal=True
-    )
-    fasting_bs_code = 1 if "Yes" in fasting_bs else 0
-
     resting_ecg = st.selectbox(
         "Resting ECG",
-        options=["Normal", "ST — ST-T wave abnormality", "LVH — Left ventricular hypertrophy"],
+        options=[
+            "Normal",
+            "ST — ST-T wave abnormality",
+            "LVH — Left ventricular hypertrophy"
+        ],
         index=0
     )
     resting_ecg_code = resting_ecg.split(" — ")[0].strip()
-
-    max_hr = st.slider(
-        "Max Heart Rate Achieved",
-        min_value=60, max_value=220, value=150, step=1
-    )
 
     exercise_angina = st.radio(
         "Exercise-Induced Angina?",
         options=["No", "Yes"],
         horizontal=True
-    )
-
-    oldpeak = st.slider(
-        "Oldpeak (ST depression)",
-        min_value=0.0, max_value=6.2, value=1.0, step=0.1
     )
 
     st_slope = st.selectbox(
@@ -133,7 +158,27 @@ with st.sidebar:
         index=0
     )
 
-    predict_btn = st.button("🔍 Predict Risk", type="primary", use_container_width=True)
+    st.divider()
+    predict_btn = st.button(
+        "🔍 Predict Risk",
+        type="primary",
+        use_container_width=True
+    )
+
+# ─────────────────────────────────────────
+# INPUT VALIDATION
+# ─────────────────────────────────────────
+def validate_inputs():
+    errors = []
+    if age < 1 or age > 120:
+        errors.append("Age must be between 1 and 120")
+    if resting_bp < 50 or resting_bp > 300:
+        errors.append("Resting BP must be between 50 and 300 mmHg")
+    if max_hr < 40 or max_hr > 250:
+        errors.append("Max Heart Rate must be between 40 and 250")
+    if oldpeak < 0.0 or oldpeak > 10.0:
+        errors.append("Oldpeak must be between 0.0 and 10.0")
+    return errors
 
 # ─────────────────────────────────────────
 # BUILD INPUT VECTOR
@@ -179,35 +224,47 @@ def build_input():
     return pd.DataFrame([row])[FEATURE_COLUMNS]
 
 # ─────────────────────────────────────────
-# MAIN AREA — results
+# MAIN AREA
 # ─────────────────────────────────────────
 if not predict_btn:
-    # Landing state
     st.markdown("### How to use this tool")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.info("**Step 1**\n\nFill in the patient's clinical details in the left panel.")
+        st.info("**Step 1**\n\nType the patient's clinical values in the left panel.")
     with col2:
-        st.info("**Step 2**\n\nClick **Predict Risk** to run the model.")
+        st.info("**Step 2**\n\nSelect categorical values from the dropdowns.")
     with col3:
-        st.info("**Step 3**\n\nReview the risk score and SHAP explanation.")
+        st.info("**Step 3**\n\nClick **Predict Risk** to see the result and SHAP explanation.")
 
     st.divider()
     st.markdown("### About this model")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Training samples", "918")
     c2.metric("Model", "XGBoost")
-    c3.metric("Features", "15")
-    c4.metric("Cross-val AUC", "~0.93")
+    c3.metric("Test Accuracy", "86.41%")
+    c4.metric("Cross-val AUC", "0.9164")
 
 else:
-    # ── Run prediction ──
+    # Validate first
+    errors = validate_inputs()
+    if errors:
+        for e in errors:
+            st.error(f"Input error: {e}")
+        st.stop()
+
+    # Run prediction
     input_df     = build_input()
     input_scaled = scaler.transform(input_df)
     probability  = model.predict_proba(input_scaled)[0][1]
     prediction   = int(probability >= 0.5)
+    confidence   = max(probability, 1 - probability)
+    conf_label   = (
+        "High confidence" if confidence > 0.75
+        else "Moderate confidence" if confidence > 0.60
+        else "Borderline — treat with caution"
+    )
 
-    # ── Result header ──
+    # Result header
     st.markdown("## Prediction Results")
     col_res, col_prob, col_conf = st.columns(3)
 
@@ -221,71 +278,75 @@ else:
         st.metric(
             label="Risk Probability",
             value=f"{probability:.1%}",
-            delta=f"{'High risk' if probability >= 0.5 else 'Low risk'}"
+            delta="High risk" if probability >= 0.5 else "Low risk"
         )
 
     with col_conf:
-        # Confidence = distance from 0.5 boundary
-        confidence = abs(probability - 0.5) * 2
-        conf_label = (
-            "High confidence" if confidence > 0.5
-            else "Moderate confidence" if confidence > 0.25
-            else "Borderline — treat with caution"
-        )
         st.metric(
             label="Model Confidence",
-            value=f"{max(probability, 1-probability):.1%}",
+            value=f"{confidence:.1%}",
             delta=conf_label
         )
 
-    # ── Risk gauge bar ──
+    # Risk gauge bar
     st.markdown("#### Risk Score")
     gauge_color = "#E24B4A" if probability >= 0.5 else "#1D9E75"
+    pct = probability * 100
+    label_inside = pct > 20
+    inside_label = f"<span style="color:white;font-size:13px;font-weight:600;padding-right:10px">{pct:.1f}%</span>" if label_inside else ""
+    outside_label = f"<span style="position:absolute;left:calc({pct:.1f}% + 8px);top:50%;transform:translateY(-50%);font-size:13px;font-weight:600">{pct:.1f}%</span>" if not label_inside else ""
     st.markdown(
         f"""
-        <div style="background:var(--secondary-background-color);
-                    border-radius:8px;height:22px;overflow:hidden;margin-bottom:6px">
-          <div style="width:{probability*100:.1f}%;background:{gauge_color};
-                      height:100%;border-radius:8px;transition:width .4s">
+        <div style="position:relative;background:var(--secondary-background-color);
+                    border-radius:8px;height:32px;margin-bottom:8px">
+          <div style="width:{pct:.1f}%;background:{gauge_color};height:100%;
+                      border-radius:8px;display:flex;align-items:center;
+                      justify-content:flex-end;min-width:0px">
+            {inside_label}
           </div>
+          {outside_label}
         </div>
-        <p style="font-size:13px;color:gray;margin:0">
-          0% (No risk) ──────────────────────── 100% (Certain risk)
-        </p>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:gray;margin-top:2px">
+          <span>0% — No risk</span><span>50% — Borderline</span><span>100% — Certain risk</span>
+        </div>
         """,
         unsafe_allow_html=True
     )
 
     st.divider()
 
-    # ── Two columns: input summary + SHAP ──
+    # Two columns: summary + SHAP
     col_left, col_right = st.columns([1, 1.4])
 
     with col_left:
         st.markdown("#### Patient Summary")
         summary = {
-            "Age":              age,
+            "Age":              f"{age} years",
             "Sex":              sex,
             "Chest Pain":       chest_pain_code,
             "Resting BP":       f"{resting_bp} mmHg",
             "Cholesterol":      f"{cholesterol} mg/dL",
-            "Fasting BS > 120": "Yes" if fasting_bs_code else "No",
+            "Fasting BS > 120": fasting_bs,
             "Resting ECG":      resting_ecg_code,
-            "Max Heart Rate":   max_hr,
+            "Max Heart Rate":   f"{max_hr} bpm",
             "Exercise Angina":  exercise_angina,
-            "Oldpeak":          oldpeak,
+            "Oldpeak":          f"{oldpeak:.1f}",
             "ST Slope":         st_slope,
         }
         for k, v in summary.items():
-            col_k, col_v = st.columns([1.2, 1])
-            col_k.markdown(f"<span style='color:gray;font-size:13px'>{k}</span>",
-                           unsafe_allow_html=True)
-            col_v.markdown(f"<span style='font-size:13px;font-weight:500'>{v}</span>",
-                           unsafe_allow_html=True)
+            ck, cv = st.columns([1.2, 1])
+            ck.markdown(
+                f"<span style='color:gray;font-size:13px'>{k}</span>",
+                unsafe_allow_html=True
+            )
+            cv.markdown(
+                f"<span style='font-size:13px;font-weight:500'>{v}</span>",
+                unsafe_allow_html=True
+            )
 
     with col_right:
         st.markdown("#### Why did the model predict this?")
-        st.caption("SHAP values show which features pushed the risk up (red) or down (blue)")
+        st.caption("SHAP values — red bars push risk up, blue bars push risk down")
 
         try:
             explainer   = shap.TreeExplainer(model)
@@ -293,7 +354,7 @@ else:
             shap_vals   = explainer.shap_values(input_named)
 
             fig, ax = plt.subplots(figsize=(7, 4))
-            shap.waterfall_plot(
+            shap.plots.waterfall(
                 shap.Explanation(
                     values        = shap_vals[0],
                     base_values   = explainer.expected_value,
@@ -311,8 +372,6 @@ else:
             st.warning(f"SHAP explanation unavailable: {e}")
 
     st.divider()
-
-    # ── Disclaimer ──
     st.caption(
         "⚠️ This tool is for research and educational purposes only. "
         "It is not a substitute for professional medical advice, diagnosis, or treatment. "
