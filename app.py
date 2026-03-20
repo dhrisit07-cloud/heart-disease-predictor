@@ -293,8 +293,8 @@ else:
     gauge_color = "#E24B4A" if probability >= 0.5 else "#1D9E75"
     pct = probability * 100
     label_inside = pct > 20
-    inside_label = f"<span style="color:white;font-size:13px;font-weight:600;padding-right:10px">{pct:.1f}%</span>" if label_inside else ""
-    outside_label = f"<span style="position:absolute;left:calc({pct:.1f}% + 8px);top:50%;transform:translateY(-50%);font-size:13px;font-weight:600">{pct:.1f}%</span>" if not label_inside else ""
+    inside_label = f"<span style='color:white;font-size:13px;font-weight:600;padding-right:10px'>{pct:.1f}%</span>" if label_inside else ""
+    outside_label = f"<span style='position:absolute;left:calc({pct:.1f}% + 8px);top:50%;transform:translateY(-50%);font-size:13px;font-weight:600'>{pct:.1f}%</span>" if not label_inside else ""
     st.markdown(
         f"""
         <div style="position:relative;background:var(--secondary-background-color);
