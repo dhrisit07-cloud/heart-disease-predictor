@@ -47,7 +47,18 @@ It goes beyond a basic prediction model by also explaining **why** the model mad
 - **Interactive Streamlit dashboard** — sliders and dropdowns for patient input, live risk score and SHAP chart
 
 ---
+## 📸 Screenshots
 
+### Landing Page
+![Landing Page](screenshots/landing.png)
+
+### Prediction Result — Heart Disease Likely
+![High Risk Prediction](screenshots/high_risk.png)
+
+### Prediction Result — Low Risk
+![Low Risk Prediction](screenshots/low_risk.png)
+
+---
 ## 📈 Results Summary
 
 | Model | Test Accuracy | Test F1 (Disease) | Cross-Val AUC |
