@@ -101,13 +101,14 @@ The dataset has a class ratio of 1.24 (508 positive vs 410 negative). Since this
 heart-disease-predictor/
 │
 ├── app.py                      # Streamlit web application
+├── heart_disease_training.ipynb  # Model training notebook (Colab)
 ├── best_xgb_model.joblib       # Trained XGBoost model (saved weights)
 ├── scaler.joblib               # Fitted StandardScaler
 ├── requirements.txt            # Python dependencies
 └── README.md                   # This file
 ```
 
-The full training notebook is available on request.
+📓 [View Training Notebook](./heart_disease_training.ipynb)
 
 ---
 
